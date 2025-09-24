@@ -1,0 +1,131 @@
+EJERCICIO 1
+
+1) { primaryTitle: "Fight Club", titleType: "movie" }
+
+2) { primaryTitle: "Fight Club", startYear: 1999, titleType: "movie" }
+
+3) { titleType: "movie", startYear: 1999 }
+
+4) { titleType: "movie", startYear: { $gt: 1999 } }
+
+5) { endYear: {$nin: ["\\N"] } }
+
+6)
+{
+  endYear: { $exists: true, $nin: ["\\N"] },
+  $expr: { $gt: [ { $toInt: "$endYear" }, "$startYear" ] }
+}
+
+
+EJERCICIO 2
+
+1)
+
+db["ibdm"].find(
+   {
+    endYear: { $exists: true, $nin: ["\\N", "", null] },
+    $expr: { $gt: [ { $toInt: "$endYear" }, "$startYear" ] }
+  },
+).sort({ startYear: 1 })
+
+2)
+
+db["ibdm"].countDocuments({ titleType: "movie", startYear: 1999 })
+
+
+3) 
+
+db["ibdm"].countDocuments({
+  titleType: "movie",
+  genres: { $regex: /(^|,)Western(,|$)/ }
+})
+
+4)
+
+db["ibdm"].aggregate([
+  { $match: { titleType: "movie", genres: { $regex: /(^|,)Western(,|$)/ } } },
+  { $group: { _id: null, titles: { $addToSet: "$primaryTitle" } } },
+  { $project: { _id: 0, titles: 1 } }
+])
+
+5) 
+
+db["ibdm"].aggregate([
+  { $match: { titleType: "movie", genres: { $regex: /(^|,)Western(,|$)/ } } },
+  { $addFields: { genresArr: { $split: ["$genres", ","] } } },
+  { $unwind: "$genresArr" },
+  { $group: {
+      _id: "$genresArr",
+      titles: { $addToSet: "$primaryTitle" },
+      count: { $sum: 1 }
+  }},
+  { $sort: { _id: 1 } }
+])
+
+
+EJERCICIO 3
+
+1- 
+db.ibdm.findOne(
+  { titleType: "movie", primaryTitle: /^Fight Club$/i, startYear: 1999 },
+)
+
+2-
+const FigthClub = db.ibdm.findOne(
+  { titleType: "movie", primaryTitle: /^Fight Club$/i, startYear: 1999 },
+)
+
+db.ibdm.updateOne(
+  { _id: FigthClub._id },
+  [
+    {
+      $set: {
+        genres: {
+          $cond: [
+            { $or: [ { $eq: ["$genres", null] }, { $eq: ["$genres", ""] }, { $eq: ["$genres", "\\N"] } ] },
+            "Comedia Oscura",
+            {
+              $cond: [
+                { $regexMatch: { input: "$genres", regex: /(^|,)Comedia Oscura(,|$)/ } },
+                "$genres",
+                { $concat: ["$genres", ",Comedia Oscura"] }
+              ]
+            }
+          ]
+        }
+      }
+    }
+  ]
+)
+
+3-
+const FigthClub = db.ibdm.findOne(
+  { titleType: "movie", primaryTitle: /^Fight Club$/i, startYear: 1999 },
+)
+
+db.ibdm.updateOne(
+  { _id: FigthClub._id },
+  {
+    $set: {
+      crew: {
+        director: "David Fincher",
+        cinematography: "Jeff Cronenweth",
+        production: ["Art Linson", "Ceán Chaffin", "Ross Grayson Bell"],
+        cast: ["Brad Pitt", "Edward Norton", "Helena Bonham Carter", "Meat Loaf", "Jared Leto"]
+      }
+    }
+  }
+)
+
+4- 
+db.ibdm.insertOne({
+  tconst: "sherk",
+  titleType: "movie",
+  primaryTitle: "Shrek 5",
+  originalTitle: "Shrek 5",
+  isAdult: 0,
+  startYear: 2026,
+  genres: "Drama,Short"
+})
+
+
